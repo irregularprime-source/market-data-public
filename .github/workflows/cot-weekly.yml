@@ -2,8 +2,10 @@ name: COT weekly
 
 on:
   schedule:
-    # 金曜 23:47 UTC = 土曜 8:47 JST（CFTC公表は金曜15:30 米東部時間＝土曜早朝 JST）
-    - cron: "47 23 * * 5"
+    # 毎日 21:47 / 22:47 UTC = 毎日 6:47 / 7:47 JST（念のため2回）
+    # CFTC公表は通常 金曜15:30 米東部時間（土曜 4:30〜5:30 JST）。祝日週は月曜などにずれるため毎日確認する
+    - cron: "47 21 * * *"
+    - cron: "47 22 * * *"
   workflow_dispatch:
 
 permissions:

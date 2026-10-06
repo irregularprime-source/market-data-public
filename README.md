@@ -16,7 +16,7 @@
 
 | 項目 | 内容 |
 |---|---|
-| 実行 | GitHub Actions（`.github/workflows/cot-weekly.yml`）毎週土曜 8:47 JST ＋ 手動実行 |
+| 実行 | GitHub Actions（`.github/workflows/cot-weekly.yml`）毎日 6:47・7:47 JST ＋ 手動実行（CFTC公表は通常 土曜早朝 JST） |
 | 取得 | 直近約3年分を毎回取り直し、`data/cot/*.csv` の履歴に上書き追記（CFTCの過去週訂正を反映するため） |
 | 集計 | ネット、前週比、建玉比、COT指数（過去156週レンジ内の位置） |
 | 出力 | `site/cot/index.html`（ダッシュボード）、`site/cot/YYYYMMDD_COT週次集計.xlsx`（履歴は投機筋区分のみ）、`site/cot/YYYYMMDD_COT全履歴.csv`（全区分） → GitHub Pages |
