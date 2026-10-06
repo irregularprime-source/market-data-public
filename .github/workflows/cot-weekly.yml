@@ -38,6 +38,10 @@ jobs:
       - name: Fetch and build
         run: python -m cot.run
 
+      # Google Search Console の所有権確認ファイル（削除すると確認が外れる）
+      - name: Copy site verification file
+        run: cp cot/google*.html site/cot/
+
       - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
