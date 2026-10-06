@@ -110,6 +110,8 @@ def build_readme(latest_date, generated_at):
         [""],
         ["出典: U.S. Commodity Futures Trading Commission (CFTC), Commitments of Traders"],
         ["https://publicreporting.cftc.gov/stories/s/r4w3-av2u"],
+        ["CFTCの公表データを独自に集計したもので、CFTCが作成・承認したものではありません。"],
+        ["情報提供のみを目的としたもので、投資助言や売買の推奨ではありません。正確性・完全性は保証しません。"],
         [""],
         ["用語"],
         ["ネット = ロング - ショート（スプレッド建玉は含めない）"],
