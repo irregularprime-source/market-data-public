@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CFTC COT ダッシュボード</title>
+<style>
+:root{--bg:#f6f6f4;--card:#fff;--ink:#1f2328;--sub:#6b7280;--line:#e5e7eb;--pos:#1a7f5a;--neg:#c2410c;--acc:#2f5bd3;--oi:#9ca3af;--tag-g:#dbeddb;--tag-r:#ffe2dd;--tag-y:#fdecc8;--tag-n:#e9e9e7}
+@media (prefers-color-scheme:dark){:root{--bg:#16181b;--card:#1f2226;--ink:#e6e6e6;--sub:#9aa0a6;--line:#33373c;--pos:#4cc38a;--neg:#f0864a;--acc:#7aa2ff;--oi:#6b7280;--tag-g:#2b3d2f;--tag-r:#4a2b26;--tag-y:#4a3d22;--tag-n:#373737}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI","Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px 16px;margin-bottom:12px}
+h1{margin:0;font-size:22px}
+.sub{color:var(--sub);font-size:13px}
+a{color:var(--acc)}
+.controls{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.controls label{display:flex;flex-direction:column;font-size:12px;color:var(--sub);gap:2px}
+select{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:14px;max-width:100%}
+.note{font-size:12px;color:var(--neg);min-height:1em}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.kpi .lb{color:var(--sub);font-size:12px}.kpi .v{font-size:21px;font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kpi .d{font-size:12px;color:var(--sub)}
+.grid2{display:grid;grid-template-columns:1.15fr 1fr;gap:12px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.card h2{margin:0 0 8px;font-size:15px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;white-space:nowrap}
+th{color:var(--sub);font-weight:500}
+th.sort{cursor:pointer;user-select:none}th.sort:hover{color:var(--ink)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.pos{color:var(--pos)}.neg{color:var(--neg)}
+.hm td.c{text-align:center;font-variant-numeric:tabular-nums;font-weight:600;min-width:42px;border:2px solid var(--card);color:#fff;cursor:pointer}
+.hm td.nm{cursor:pointer}.hm tr:hover td.nm{color:var(--acc)}
+.tag{display:inline-block;padding:0 6px;border-radius:4px;font-size:12px}
+.tg{background:var(--tag-g)}.tr{background:var(--tag-r)}.ty{background:var(--tag-y)}.tn{background:var(--tag-n)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--sub);margin-top:6px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.chartbox{position:relative}
+svg text{fill:var(--sub);font-size:11px}
+.tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.15);display:none;white-space:nowrap}
+.stale{color:var(--sub);font-size:11px}
+footer{margin-top:18px;font-size:12px;color:var(--sub);line-height:1.7}
+.empty{color:var(--sub);padding:16px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>CFTC COT ダッシュボード</h1>
+  <span class="sub" id="meta"></span>
+</header>
+
+<div class="controls">
+  <label>データ種類<select id="selVariant"></select></label>
+  <label>レポート<select id="selReport"></select></label>
+  <label>投機筋区分<select id="selCategory"></select></label>
+  <label>資産区分<select id="selAsset"></select></label>
+  <span class="note" id="note"></span>
+</div>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>COTインデックス ヒートマップ（直近8週）</h2>
+    <div class="scroll"><table class="hm" id="heatmap"></table></div>
+    <div class="legend"><span><span class="sw" style="background:rgb(194,65,12)"></span>0 売り側の極端</span><span><span class="sw" style="background:rgb(156,163,175)"></span>50 中立</span><span><span class="sw" style="background:rgb(26,127,90)"></span>100 買い側の極端</span><span>行をクリックで右のグラフに表示</span></div>
+  </div>
+  <div class="card">
+    <h2>ネットポジション推移</h2>
+    <label class="sub">銘柄 <select id="selMarket"></select></label>
+    <label class="sub" style="margin-left:8px">期間 <select id="selRange"><option value="52">1年</option><option value="104">2年</option><option value="156" selected>3年</option><option value="0">全期間</option></select></label>
+    <div class="chartbox"><svg id="chart" viewBox="0 0 520 280" width="100%"></svg><div class="tip" id="tip"></div></div>
+    <div class="legend"><span><span class="sw" style="background:var(--acc)"></span>ネット（枚・左軸）</span><span><span class="sw" style="background:var(--oi)"></span>総建玉（枚・右軸）</span></div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px">
+  <h2>サマリー（見出しクリックで並べ替え）</h2>
+  <div class="scroll"><table id="summary"></table></div>
+</div>
+
+<footer>
+  出典：U.S. Commodity Futures Trading Commission (CFTC), Commitments of Traders —
+  <a href="https://publicreporting.cftc.gov/stories/s/r4w3-av2u" target="_blank" rel="noopener">CFTC Public Reporting</a>。
+  本ページはCFTCの公表データを独自に集計したもので、CFTCが作成・承認したものではありません。<br>
+  ネット＝ロング−ショート（スプレッド除く）／建玉比＝ネット÷総建玉／COT指数＝過去156週のネットの最小〜最大レンジ内の位置（0〜100、52週以上で計算）。<br>
+  シグナル：COT指数 90以上=買い極端、10以下=売り極端、80以上・20以下=要注意。基準日は火曜時点の建玉で、CFTCは通常その週の金曜（米東部時間15:30）に公表します。
+</footer>
+</div>
+
+<script>
+const DATA = /*__COT_DATA__*/null;
+
+// ---------- 状態（URLのハッシュに保存して共有・再訪時に復元） ----------
+const state = {variant: "fo", report: "TFF", category: "", asset: "", market: "", range: "156", sortKey: "", sortDir: -1};
+function readHash() {
+  try {
+    const params = new URLSearchParams(location.hash.slice(1));
+    for (const key of Object.keys(state)) { if (params.has(key)) state[key] = params.get(key); }
+    if (params.has("sortDir")) state.sortDir = Number(params.get("sortDir"));
+  } catch (error) { /* ハッシュが壊れていても既定値で表示する */ }
+}
+function writeHash() {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(state)) { if (value !== "") params.set(key, value); }
+  history.replaceState(null, "", "#" + params.toString());
+}
+
+// ---------- 表示用の小道具 ----------
+const $ = id => document.getElementById(id);
+const fmt = v => v == null ? "—" : Math.round(v).toLocaleString();
+const fmtSigned = v => v == null ? "—" : (v > 0 ? "+" : "") + Math.round(v).toLocaleString();
+const cls = v => v == null ? "" : (v >= 0 ? "pos" : "neg");
+const shortDate = d => d.slice(2).replace(/-/g, "/");
+function signal(idx) {
+  if (idx == null) return "";
+  if (idx >= 90) return '<span class="tag tg">買い極端</span>';
+  if (idx <= 10) return '<span class="tag tr">売り極端</span>';
+  if (idx >= 80 || idx <= 20) return '<span class="tag ty">要注意</span>';
+  return '<span class="tag tn">中立</span>';
+}
+function heatColor(value) {
+  const sell = [194, 65, 12], mid = [156, 163, 175], buy = [26, 127, 90];
+  const t = value / 100;
+  const [from, to, u] = t < 0.5 ? [sell, mid, t * 2] : [mid, buy, (t - 0.5) * 2];
+  return `rgb(${from.map((x, i) => Math.round(x + (to[i] - x) * u)).join(",")})`;
+}
+function lastPositions(values) {
+  // 最新の値がある週と、その前の値がある週の位置を返す
+  let last = -1, prev = -1;
+  for (let i = values.length - 1; i >= 0; i--) {
+    if (values[i] == null) continue;
+    if (last < 0) { last = i; } else { prev = i; break; }
+  }
+  return [last, prev];
+}
+
+// ---------- 現在の選択に合う行を作る ----------
+function currentRows() {
+  const rows = [];
+  for (const [code, market] of Object.entries(DATA.markets)) {
+    if (state.asset && market.asset !== state.asset) continue;
+    const entry = DATA.series[`${state.variant}|${state.report}|${code}`];
+    if (!entry || !entry.net[state.category]) continue;
+    const net = entry.net[state.category], idx = entry.idx[state.category];
+    const [last, prev] = lastPositions(net);
+    if (last < 0) continue;
+    const change = prev >= 0 ? net[last] - net[prev] : null;
+    const oi = entry.oi[last];
+    rows.push({
+      code, name: market.name, asset: market.asset, order: market.order,
+      long: entry.long[state.category], short: entry.short[state.category],
+      net: net[last], change, oi,
+      ratio: oi ? net[last] / oi * 100 : null,
+      changeRatio: oi && change != null ? Math.abs(change) / oi * 100 : null,
+      idx: idx[last], idx8: idx.slice(-8), net8: net.slice(-8),
+      stale: last !== DATA.dates.length - 1 ? DATA.dates[last] : null,
+    });
+  }
+  rows.sort((a, b) => a.order - b.order);
+  return rows;
+}
+
+// ---------- セレクトボックス ----------
+function fillSelect(select, options, value) {
+  select.innerHTML = options.map(([v, label, disabled]) =>
+    `<option value="${v}"${disabled ? " disabled" : ""}${v === value ? " selected" : ""}>${label}</option>`).join("");
+}
+function setupControls() {
+  const report = DATA.reports[state.report] ? state.report : "TFF";
+  state.report = report;
+  const reportDef = DATA.reports[report];
+
+  // CITのように先物のみ版が無いレポートでは、データ種類を自動で切り替える
+  $("note").textContent = reportDef.variants.length === 1 ? "※ CITはCFTCが先物+オプション版のみ公表しています" : "";
+  if (!reportDef.variants.includes(state.variant)) state.variant = reportDef.variants[0];
+  fillSelect($("selVariant"), Object.entries(DATA.variant_labels).map(([k, v]) => [k, v, !reportDef.variants.includes(k)]), state.variant);
+  fillSelect($("selReport"), Object.entries(DATA.reports).map(([k, v]) => [k, v.label]), report);
+
+  if (!reportDef.categories.some(([k]) => k === state.category)) state.category = reportDef.default;
+  fillSelect($("selCategory"), reportDef.categories.map(([k, label]) => [k, label]), state.category);
+
+  const assets = [];
+  for (const [code, market] of Object.entries(DATA.markets)) {
+    if (DATA.series[`${state.variant}|${report}|${code}`] && !assets.includes(market.asset)) assets.push(market.asset);
+  }
+  if (state.asset && !assets.includes(state.asset)) state.asset = "";
+  fillSelect($("selAsset"), [["", "すべて"], ...assets.map(a => [a, a])], state.asset);
+}
+
+// ---------- KPI ----------
+function renderKpis(rows) {
+  const extreme = rows.filter(r => r.idx != null && (r.idx >= 90 || r.idx <= 10));
+  const biggest = rows.filter(r => r.changeRatio != null).sort((a, b) => b.changeRatio - a.changeRatio)[0];
+  const cards = [
+    ["表示銘柄数", rows.length + " 銘柄", `${DATA.reports[state.report].label}`],
+    ["極端ポジション", extreme.length + " 銘柄", extreme.slice(0, 4).map(r => r.name).join("・") || "なし"],
+    ["前週比が最大（建玉比）", biggest ? biggest.name : "—", biggest ? `<span class="${cls(biggest.change)}">${fmtSigned(biggest.change)}枚</span>（建玉の${biggest.changeRatio.toFixed(1)}%）` : ""],
+    ["基準日", DATA.latest, `データ作成 ${DATA.generated_at}`],
+  ];
+  $("kpis").innerHTML = cards.map(([label, value, detail]) =>
+    `<div class="card kpi"><div class="lb">${label}</div><div class="v">${value}</div><div class="d">${detail}</div></div>`).join("");
+}
+
+// ---------- ヒートマップ ----------
+function renderHeatmap(rows) {
+  if (!rows.length) { $("heatmap").innerHTML = '<tr><td class="empty">該当する銘柄がありません</td></tr>'; return; }
+  const dates = DATA.dates.slice(-8);
+  let html = "<tr><th>銘柄</th>" + dates.map(d => `<th class="num">${shortDate(d).slice(3)}</th>`).join("") + "</tr>";
+  for (const row of rows) {
+    html += `<tr data-code="${row.code}"><td class="nm">${row.name}</td>` + row.idx8.map((v, i) =>
+      v == null ? "<td class='c' style='background:transparent;color:var(--sub)'>—</td>"
+        : `<td class="c" style="background:${heatColor(v)}" title="${dates[i]} COT指数 ${v}">${Math.round(v)}</td>`).join("") + "</tr>";
+  }
+  $("heatmap").innerHTML = html;
+  for (const tr of $("heatmap").querySelectorAll("tr[data-code]")) {
+    tr.onclick = () => { state.market = tr.dataset.code; render(); };
+  }
+}
+
+// ---------- 推移グラフ ----------
+function renderChart(rows) {
+  const codes = rows.map(r => r.code);
+  if (!codes.includes(state.market)) state.market = codes[0] || "";
+  fillSelect($("selMarket"), rows.map(r => [r.code, r.name]), state.market);
+  $("selRange").value = state.range;
+  const svg = $("chart");
+  if (!state.market) { svg.innerHTML = '<text x="260" y="140" text-anchor="middle">該当する銘柄がありません</text>'; return; }
+
+  const entry = DATA.series[`${state.variant}|${state.report}|${state.market}`];
+  const span = Number(state.range) || DATA.dates.length;
+  const start = Math.max(0, DATA.dates.length - span);
+  const dates = DATA.dates.slice(start);
+  const net = entry.net[state.category].slice(start);
+  const oi = entry.oi.slice(start);
+  const idx = entry.idx[state.category].slice(start);
+
+  const W = 520, H = 280, L = 58, R = 54, T = 12, B = 26;
+  const netValues = net.filter(v => v != null);
+  const oiValues = oi.filter(v => v != null);
+  let lo = Math.min(0, ...netValues), hi = Math.max(0, ...netValues);
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const oiMax = Math.max(1, ...oiValues);
+  const X = i => L + i * (W - L - R) / Math.max(1, dates.length - 1);
+  const Y = v => T + (hi - v) * (H - T - B) / (hi - lo);
+  const Y2 = v => T + (oiMax - v) * (H - T - B) / oiMax;
+  const unit = v => Math.abs(v) >= 1e6 ? (v / 1e6).toFixed(1) + "M" : Math.abs(v) >= 1e3 ? Math.round(v / 1e3) + "k" : Math.round(v);
+  const path = (values, yFn) => {
+    let d = "", pen = false;
+    values.forEach((v, i) => { if (v == null) { pen = false; return; } d += (pen ? "L" : "M") + X(i).toFixed(1) + "," + yFn(v).toFixed(1); pen = true; });
+    return d;
+  };
+
+  let g = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + (hi - lo) * k / 4, v2 = oiMax * k / 4;
+    g += `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="currentColor" opacity=".08"/>`;
+    g += `<text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${unit(v)}</text>`;
+    g += `<text x="${W - R + 6}" y="${Y2(v2) + 4}">${unit(v2)}</text>`;
+  }
+  g += `<line x1="${L}" x2="${W - R}" y1="${Y(0)}" y2="${Y(0)}" stroke="currentColor" opacity=".35"/>`;
+  const tickCount = 4;
+  for (let k = 0; k <= tickCount; k++) {
+    const i = Math.round((dates.length - 1) * k / tickCount);
+    g += `<text x="${X(i)}" y="${H - 6}" text-anchor="${k === 0 ? "start" : k === tickCount ? "end" : "middle"}">${dates[i].slice(0, 7)}</text>`;
+  }
+  g += `<path d="${path(oi, Y2)}" fill="none" stroke="var(--oi)" stroke-width="1.2"/>`;
+  g += `<path d="${path(net, Y)}" fill="none" stroke="var(--acc)" stroke-width="2"/>`;
+  g += `<line id="hoverLine" y1="${T}" y2="${H - B}" stroke="currentColor" opacity="0" />`;
+  g += `<rect id="hoverArea" x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`;
+  svg.innerHTML = g;
+
+  const tip = $("tip"), hoverLine = svg.querySelector("#hoverLine");
+  svg.querySelector("#hoverArea").onmousemove = event => {
+    const box = svg.getBoundingClientRect();
+    const x = (event.clientX - box.left) * W / box.width;
+    const i = Math.max(0, Math.min(dates.length - 1, Math.round((x - L) * (dates.length - 1) / (W - L - R))));
+    hoverLine.setAttribute("x1", X(i)); hoverLine.setAttribute("x2", X(i)); hoverLine.setAttribute("opacity", ".4");
+    tip.style.display = "block";
+    tip.innerHTML = `<b>${dates[i]}</b><br>ネット ${fmt(net[i])}<br>総建玉 ${fmt(oi[i])}<br>COT指数 ${idx[i] == null ? "—" : idx[i]}`;
+    const left = X(i) * box.width / W;
+    tip.style.left = (left > box.width / 2 ? left - tip.offsetWidth - 10 : left + 10) + "px";
+    tip.style.top = "10px";
+  };
+  svg.querySelector("#hoverArea").onmouseleave = () => { tip.style.display = "none"; hoverLine.setAttribute("opacity", "0"); };
+}
+
+// ---------- サマリー表 ----------
+const COLUMNS = [
+  ["asset", "資産区分", false], ["name", "銘柄", false], ["long", "ロング", true], ["short", "ショート", true],
+  ["net", "ネット", true], ["change", "前週比", true], ["ratio", "建玉比", true], ["idx", "COT指数", true],
+];
+function sparkline(values) {
+  const valid = values.filter(v => v != null);
+  if (valid.length < 2) return "";
+  const lo = Math.min(...valid), hi = Math.max(...valid);
+  const points = values.map((v, i) => v == null ? null : `${(i * 11 + 2).toFixed(0)},${(18 - (v - lo) / ((hi - lo) || 1) * 16).toFixed(1)}`).filter(Boolean);
+  return `<svg width="82" height="20"><polyline fill="none" stroke="var(--acc)" stroke-width="1.5" points="${points.join(" ")}"/></svg>`;
+}
+function renderSummary(rows) {
+  const sorted = [...rows];
+  if (state.sortKey) {
+    sorted.sort((a, b) => {
+      const x = a[state.sortKey], y = b[state.sortKey];
+      if (x == null) return 1; if (y == null) return -1;
+      return (typeof x === "string" ? x.localeCompare(y, "ja") : x - y) * state.sortDir;
+    });
+  }
+  let html = "<tr>" + COLUMNS.map(([key, label, numeric]) =>
+    `<th class="sort${numeric ? " num" : ""}" data-key="${key}">${label}${state.sortKey === key ? (state.sortDir > 0 ? " ▲" : " ▼") : ""}</th>`).join("") + "<th>シグナル</th><th>直近8週</th></tr>";
+  for (const r of sorted) {
+    html += `<tr><td>${r.asset}</td><td>${r.name}${r.stale ? ` <span class="stale">(${r.stale})</span>` : ""}</td>` +
+      `<td class="num">${fmt(r.long)}</td><td class="num">${fmt(r.short)}</td><td class="num ${cls(r.net)}">${fmt(r.net)}</td>` +
+      `<td class="num ${cls(r.change)}">${fmtSigned(r.change)}</td><td class="num">${r.ratio == null ? "—" : r.ratio.toFixed(1) + "%"}</td>` +
+      `<td class="num">${r.idx == null ? "—" : r.idx}</td><td>${signal(r.idx)}</td><td>${sparkline(r.net8)}</td></tr>`;
+  }
+  if (!sorted.length) html += '<tr><td class="empty" colspan="10">該当する銘柄がありません</td></tr>';
+  $("summary").innerHTML = html;
+  for (const th of $("summary").querySelectorAll("th.sort")) {
+    th.onclick = () => {
+      const key = th.dataset.key;
+      state.sortDir = state.sortKey === key ? -state.sortDir : (key === "asset" || key === "name" ? 1 : -1);
+      state.sortKey = key;
+      render();
+    };
+  }
+}
+
+// ---------- 全体の描画 ----------
+function render() {
+  setupControls();
+  const rows = currentRows();
+  renderKpis(rows);
+  renderHeatmap(rows);
+  renderChart(rows);
+  renderSummary(rows);
+  writeHash();
+}
+
+function init() {
+  if (!DATA) { document.body.innerHTML = "<p style='padding:20px'>データが埋め込まれていません。</p>"; return; }
+  $("meta").innerHTML = `基準日 ${DATA.latest}（火曜時点）／ 作成 ${DATA.generated_at}` +
+    (DATA.excel ? ` ／ <a href="${DATA.excel}" download>Excel</a>` : "") +
+    (DATA.csv ? ` ／ <a href="${DATA.csv}" download>全履歴CSV</a>` : "");
+  readHash();
+  $("selVariant").onchange = e => { state.variant = e.target.value; render(); };
+  $("selReport").onchange = e => { state.report = e.target.value; state.category = ""; render(); };
+  $("selCategory").onchange = e => { state.category = e.target.value; render(); };
+  $("selAsset").onchange = e => { state.asset = e.target.value; render(); };
+  $("selMarket").onchange = e => { state.market = e.target.value; render(); };
+  $("selRange").onchange = e => { state.range = e.target.value; render(); };
+  render();
+}
+init();
+</script>
+</body>
+</html>

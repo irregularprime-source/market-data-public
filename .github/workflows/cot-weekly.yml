@@ -1,0 +1,63 @@
+name: COT weekly
+
+on:
+  schedule:
+    # 金曜 23:47 UTC = 土曜 8:47 JST（CFTC公表は金曜15:30 米東部時間＝土曜早朝 JST）
+    - cron: "47 23 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: cot-weekly
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Test
+        run: python -m pytest -q
+
+      - name: Fetch and build
+        run: python -m cot.run
+
+      - name: Commit data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/cot
+          if git diff --cached --quiet; then
+            echo "データ変更なし"
+          else
+            git commit -m "COTデータ更新 $(date -u +%Y-%m-%d)" -m "CFTCの週次公表分と過去週の訂正を履歴に反映するため"
+            git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
