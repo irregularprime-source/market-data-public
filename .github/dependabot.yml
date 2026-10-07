@@ -1,0 +1,11 @@
+# 依存パッケージと GitHub Actions の更新を毎週チェックし、更新があれば PR を作る
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

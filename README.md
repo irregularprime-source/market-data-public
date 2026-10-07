@@ -27,6 +27,8 @@
 
 ## ローカル実行（任意）
 
+Python 3.11 以上が必要です（GitHub Actions は 3.12）。
+
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
 python -m pytest -q

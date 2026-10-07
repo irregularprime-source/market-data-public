@@ -1,3 +1,13 @@
-requests>=2.31
-pandas>=2.1
-openpyxl>=3.1
+# 実行時の依存（間接依存も含めて版を固定。更新は Dependabot の PR で行う）
+# Python 3.12 で動作確認（GitHub Actions と同じ）。pandas 3 / numpy 2.5 は Python 3.11 以上が必要
+requests==2.34.2
+certifi==2026.7.22
+charset-normalizer==3.5.2
+idna==3.20
+urllib3==2.8.0
+pandas==3.0.6
+numpy==2.5.3
+python-dateutil==2.9.0.post0
+six==1.17.0
+openpyxl==3.1.5
+et-xmlfile==2.0.0
